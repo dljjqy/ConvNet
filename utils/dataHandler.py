@@ -198,8 +198,8 @@ def _genData(path, n):
     return True
 
 
-def _genMixData(max_point_source_num=5, min_allow_h=5, sample_points=10000,
-        minQ=1, maxQ=2, a=1, n=64, trainN=5000, valN=100, path='./data'):
+def _genMixData(max_point_source_num=5, min_allow_h=6, sample_points=1000,
+        minQ=1, maxQ=2, a=1, n=65, trainN=5000, valN=100, path='../data'):
     '''
     Generate mixed type data for finite difference:
         params:
@@ -213,35 +213,52 @@ def _genMixData(max_point_source_num=5, min_allow_h=5, sample_points=10000,
             None.
     This function will randomly generate data with the number of point sources under max_point_source_num and more than one.
     '''
-    p = Path(f'{path}/{n}mixed/')
-    if not p.isdir():
+    p = Path(f'{path}/{n}/mixed/')
+    if not p.is_dir():
         p.mkdir(parents=True)
     
-    h = 2 * a / n
+    h = 2 * a / (n - 1)
+    x = np.linspace(-a, a, n)
+    y = np.linspace(-a, a, n)
+    xx, yy = np.meshgrid(x, y)
     gap = min_allow_h * h
-    fd_train_fs = np.zeros((trainN, n, n))
+    N = trainN + valN
+    fd_fs = np.zeros((N, n, n))
 
     rng = np.random.default_rng(0)
-    source_nums = rng.integers(low=1, high=max_point_source_num+1, size=trainN)
+    source_nums = rng.integers(low=1, high=max_point_source_num+1, size=N)
     xs = np.random.uniform(-a+min_allow_h*h, a-min_allow_h*h, sample_points)
     ys = np.random.uniform(-a+min_allow_h*h, a-min_allow_h*h, sample_points)
+    Qs = np.random.uniform(minQ, maxQ, sample_points)
 
-    for number in source_nums:
+    for i, source_num in enumerate(source_nums): 
         coords = np.array([])
-        while coords.shape[0] < number:
-            new_coord = np.array(np.random.choice(xs, size=1), np.random.choice(ys, size=1))
-            if a.size > 0:
+        qs = np.random.choice(Qs, size=source_num)
+        while coords.shape[0] < source_num:
+            new_coord = np.array([np.random.choice(xs, size=1), np.random.choice(ys, size=1)])
+            if coords.size > 0:
                 distances = np.linalg.norm(coords - new_coord, axis=1)
                 if (distances >= gap).all():
                     coords = np.stack([*coords, new_coord], 0)
+                    fd_fs[i] += qs[coords.shape[0]-1] * normal(xx, yy, h, new_coord.squeeze())
                 else:
                     continue
             else:
                 coords = np.array([new_coord])
-            
+                fd_fs[i] += qs[coords.shape[0]-1] * normal(xx, yy, h, new_coord.squeeze())
+    fd_B = fd_fs.reshape(-1, n**2) * h**2
+
+    fd_trainF = fd_fs[:trainN]
+    fd_valF = fd_fs[trainN:]
+
+    fd_trainB = fd_B[:trainN]
+    fd_valB = fd_B[trainN:]
+    np.save(f'{p}/fd_F', fd_trainF)
+    np.save(f'{p}/fd_ValF.npy', fd_valF)
+    np.save(f'{p}/fd_B', fd_trainB)
+    np.save(f'{p}/fd_ValB.npy', fd_valB)
 
 
-    fd_val_fs = np.zeros((valN, n, n))
 def gen_test_data(data_path='../data/', save_path='../test_data/'):
     save_path = Path(save_path)
     data_path = Path(data_path)
@@ -285,7 +302,4 @@ def gen_test_data(data_path='../data/', save_path='../test_data/'):
     return True
 
 if __name__ == '__main__':
-    # Ns = [33, 65]
-    # for n in Ns:
-    #     _genData('../data', n)
-    gen_test_data()
+    _genMixData()

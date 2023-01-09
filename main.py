@@ -6,13 +6,13 @@ hyper_parameters_dict = {
 "grid_sizes" : [65],
 "batch_sizes" : [16],
 "net" : ['UNet'],
-"features" : [4],
-"data_type": ['Locs'],
-"boundary_type":['N'],
+"features" : [16],
+"data_type": ['mixed'],
+"boundary_type":['D'],
 "numerical_method":['fd'],
 "backward_type": ['conv'], 
 "lr":[1e-3], 
-"max_epochs":[10],
+"max_epochs":[150],
 "ckpt":[None]
 # "ckpt": ['./lightning_logs/fv_cg_65_UNet_32_bs32_OneD/version_1/checkpoints/last.ckpt']
 }

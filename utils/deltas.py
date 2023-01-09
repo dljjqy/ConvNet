@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 
 def normal(x, y, h, mean=[0, 0]):
-    var = np.diag([1] * 2) * h**2
+    var = np.diag([0.5] * 2) * h**2
     pos = np.dstack((x, y))
     rv = multivariate_normal(mean, var)
     return rv.pdf(pos)
