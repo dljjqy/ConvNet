@@ -9,7 +9,6 @@ hyper_parameters_dict = {
 "features" : [16],
 "data_type": ['mixed'],
 "boundary_type":['D'],
-"numerical_method":['fd'],
 "backward_type": ['conv'], 
 "lr":[1e-3], 
 "max_epochs":[150],

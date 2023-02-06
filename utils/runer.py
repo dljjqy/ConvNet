@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type, layers,
-            numerical_method='fd', backward_type='jac', lr=1e-3, max_epochs=100, ckpt=False, gpus=1,
+            backward_type='jac', lr=1e-3, max_epochs=100, ckpt=False, gpus=1,
             dm=LADataModule, pl_model=LAModel):
     '''
     gridSize: How big mesh. 33, 65, 129
@@ -24,32 +24,39 @@ def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type
     max_epochs: epochs
     ckpt: True for load parameters from ckpt
     '''
-    exp_name = f'{numerical_method}_{backward_type}_{gridSize}_{net}{layers}_{features}_bs{batch_size}_{data_type}{boundary_type}'
+    exp_name = f'{backward_type}_{gridSize}_{net}{layers}_{features}_bs{batch_size}_{data_type}{boundary_type}'
     data_path = f'./data/{gridSize}/{data_type}/'
     mat_path = f'./data/{gridSize}/mat/'
     if ckpt:
         exp_name = 'resume_' + exp_name
     layers = list(2**i for i in range(int(np.log2(gridSize)) - 2))
-    model = model_names[net](layers=layers, features=features, boundary_type=boundary_type, numerical_method=numerical_method)
-    
-    dc = {'trainer':{}, 'pl_model':{}, 'pl_dataModule':{}}
-    dc['name'] = exp_name
-
-    dc['trainer'] = {'max_epochs': max_epochs, 'precision': 32, 'check_val_every_n_epoch': 1, 'accelerator': 'cuda', 'devices': gpus}
-    dc['trainer']['logger'] = TensorBoardLogger('./lightning_logs/', exp_name)
-    dc['trainer']['callbacks'] = ModelCheckpoint(monitor= f'val_{backward_type}', mode='min', every_n_train_steps=0,
-                                        every_n_epochs=1, train_time_interval=None, save_top_k=3, save_last=True,)
-    
+    model = model_names[net](layers=layers, features=features, boundary_type=boundary_type)
     n = gridSize
     a = 500 if 'big' in data_type else 1
-    h = 2*a/(n-1) if numerical_method == 'fd' else 2*a/n
-    dc['pl_model']['name'] = pl_model
-    dc['pl_model']['args'] = [model, a, n, mat_path, lr, numerical_method, backward_type, boundary_type, gridSize//2]
-    dc['ckpt'] = ckpt
-    
-    dc['pl_dataModule']['name'] = dm
-    dc['pl_dataModule']['args'] = [data_path, batch_size, a, n, numerical_method]
-    
+    h = 2*a/(n-1)
+
+    dc = {
+        'name': exp_name,
+        'ckpt': ckpt,
+        'trainer': {
+            'max_epochs': max_epochs,
+            'precision': 32,
+            'check_val_every_n_epoch': 1,
+            'accelerator':'cuda',
+            'devices': gpus,
+            'logger': TensorBoardLogger('./lightning_logs/', exp_name),
+            'callbacks': ModelCheckpoint(monitor=f'val_{backward_type}', mode='min', every_n_train_steps=0,   every_n_epochs=1, 
+                                         train_time_interval=None, save_top_k=3, save_last=True,)
+        },
+        'pl_model': {
+            'name': pl_model,
+            'args': [model, a, n, mat_path, lr, backward_type, boundary_type, gridSize//2]
+        },
+        'pl_dataModule': {
+            'name': dm,
+            'args': [data_path, batch_size, a, n]
+        }
+    }
     return dc
 
 def main(kwargs):

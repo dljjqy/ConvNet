@@ -17,7 +17,7 @@ class DoubleConv(nn.Module):
         return self.net(x)
 
 class UNet(nn.Module):
-    def __init__(self, layers=None, in_c=3, out_c=1, features=16, boundary_type='D', numerical_method='fd'):
+    def __init__(self, layers=None, in_c=3, out_c=1, features=16, boundary_type='D'):
         super().__init__()
         self.maxpool = nn.MaxPool2d((2, 2), (2, 2))
 
@@ -30,7 +30,7 @@ class UNet(nn.Module):
         self.up4 = nn.ConvTranspose2d(features * 16, features * 8, (2, 2), (2, 2))
         self.up3 = nn.ConvTranspose2d(features * 8,  features * 4, (2, 2), (2, 2))
         self.up2 = nn.ConvTranspose2d(features * 4,  features * 2, (2, 2), (2, 2))
-        self.up1 = nn.ConvTranspose2d(features * 2,  features * 1, (3, 3), (2, 2))
+        self.up1 = nn.ConvTranspose2d(features * 2,  features * 1, (2, 2), (2, 2))
 
         self.uconv3 = DoubleConv(features *16, features * 8)
         self.uconv2 = DoubleConv(features * 8, features * 4)
@@ -41,10 +41,7 @@ class UNet(nn.Module):
             self.final = nn.Conv2d(features, out_c, 3, 1, padding='valid')
         elif boundary_type == 'N':
             self.final = nn.Conv2d(features, out_c, 3, 1, padding=(0, 1), padding_mode='reflect')
-
-        if numerical_method == 'fv':
-            self.final = nn.Conv2d(features, out_c, 3, 1, padding='same', padding_mode='reflect')
-
+            
     def forward(self , x):
         x0 = self.dconv0(x)
         x1 = self.dconv1(self.maxpool(x0))
@@ -60,7 +57,7 @@ class UNet(nn.Module):
         return y
 
 class myUNet(nn.Module):
-    def __init__(self, in_c=3, out_c=1, features=8, layers=[1, 2, 4, 8, 16, 32, 64], boundary_type='D', numerical_method='fd'):
+    def __init__(self, in_c=3, out_c=1, features=8, layers=[1, 2, 4, 8, 16, 32, 64], boundary_type='D'):
         super().__init__()
         self.features = features
         self.layers = layers
@@ -70,8 +67,6 @@ class myUNet(nn.Module):
             self.final = nn.Conv2d(features, out_c, 3, 1, padding='valid')
         elif boundary_type == 'N':
             self.final = nn.Conv2d(features, out_c, 3, 1, padding=(0, 1), padding_mode='reflect')
-        if numerical_method == 'fv':
-            self.final = nn.Conv2d(features, out_c, 3, 1, padding='same', padding_mode='reflect')
 
         self.dconvs = [DoubleConv(in_c, features)]
         self.ups = []
@@ -102,7 +97,7 @@ class myUNet(nn.Module):
         return y
 
 if __name__ == '__main__':
-    x = torch.rand(3, 3, 65, 65)
-    net = UNet()
+    x = torch.rand(3, 3, 64, 64)
+    net = UNet(boundary_type='N')
     y = net(x)
     print(y.shape)

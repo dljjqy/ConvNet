@@ -9,15 +9,14 @@ def coo2tensor(A):
     indices = np.vstack((A.row, A.col))
     i = torch.LongTensor(indices)
     v = torch.FloatTensor(values)
-    shape = A.shape
-    return torch.sparse.FloatTensor(i, v, torch.Size(shape)).to(torch.float32)
+    return torch.sparse.FloatTensor(i, v, A.shape).to(torch.float32)
 
-def np2torch(data_path, backward_type='jac', boundary_type='D', numerical_method='fd'):
+def np2torch(data_path, backward_type='jac', boundary_type='D'):
     '''
     backward_type: To identify which iterative method to use.
         Jacobian, Gauess Seidel, CG.
     '''
-    A_path = f'{data_path}{numerical_method}_A{boundary_type}'
+    A_path = f'{data_path}_A{boundary_type}'
     invM_path = f'{A_path}_{backward_type}_invM.npz'
     M_path = f'{A_path}_{backward_type}_M.npz'  
 
@@ -39,8 +38,7 @@ def mmbv(A, y):
     """
     y = torch.transpose(y, 0, 1)
     v = torch.sparse.mm(A, y)
-    v = torch.transpose(v, 0, 1)
-    return v
+    return v.transpose(0, 1)
 
 def bvi(x, y):
     """
@@ -86,7 +84,7 @@ def internal_conv(x):
     rhs = F.conv2d(x, kernel)
     return rhs
 
-def convRhs(numerical_method, a, n, dir_bcs=(1,1,1,1), neu_bcs=None, gn=0, gd=0, k=1):
+def convRhs(a, n, dir_bcs=(1,1,1,1), neu_bcs=None, gn=0, gd=0, k=1):
     '''
     Generate rhs function.
     Params:
@@ -103,28 +101,21 @@ def convRhs(numerical_method, a, n, dir_bcs=(1,1,1,1), neu_bcs=None, gn=0, gd=0,
     dir_pad = lambda x: x
     neu_pad = lambda x: x
     force = lambda x:x
-    if numerical_method == 'fd':
-        h = 2 * a / (n - 1)
-        h2 = h**2
-        
-        force = lambda f: h2 * f/ (4 * k)
-        if not dir_bcs is None:
-            dir_pad = lambda x: fd_pad_diri_bc(x, dir_bcs, gd)
-            force = lambda f: h2 * _genforce(f, dir_bcs, n)  / (4 * k)
-
-        if not neu_bcs is None:
-            neu_pad = lambda x: fd_pad_neu_bc(x, h, neu_bcs, gn)
-
-        padder = lambda x: dir_pad(x)
-        conver = lambda x, f: internal_conv(dir_pad(neu_pad(x))) + force(f)
-
-        return padder, conver
+    h = 2 * a / (n - 1)
+    h2 = h**2
     
-    elif numerical_method == 'fv':
-        h = 2 * a / n
-        pass
-        
-    pass
+    force = lambda f: h2 * f/ (4 * k)
+    if not dir_bcs is None:
+        dir_pad = lambda x: fd_pad_diri_bc(x, dir_bcs, gd)
+        force = lambda f: h2 * _genforce(f, dir_bcs, n)  / (4 * k)
+
+    if not neu_bcs is None:
+        neu_pad = lambda x: fd_pad_neu_bc(x, h, neu_bcs, gn)
+
+    padder = lambda x: dir_pad(x)
+    conver = lambda x, f: internal_conv(dir_pad(neu_pad(x))) + force(f)
+
+    return padder, conver
 
 def _genforce(f, dir_bcs, n):
     bs, c, _, _ = f.shape

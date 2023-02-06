@@ -4,19 +4,13 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
 class LADataset(Dataset):
-    def __init__(self, pathB, pathF, a, n, numerical_method='fd'):
+    def __init__(self, pathB, pathF, a, n):
         super().__init__()
         self.B = np.load(pathB)
         self.F = np.load(pathF)
-        if numerical_method == 'fd':
-            x = np.linspace(-a, a, n)
-            y = np.linspace(-a, a, n)
-            self.xx, self.yy = np.meshgrid(x, y)
-        elif numerical_method == 'fv':
-            h = 2*a / n
-            x = np.linspace(-a + h/2, a - h/2, n)
-            y = np.linspace(-a + h/2, a - h/2, n)
-            self.xx, self.yy = np.meshgrid(x, y)
+        x = np.linspace(-a, a, n)
+        y = np.linspace(-a, a, n)
+        self.xx, self.yy = np.meshgrid(x, y)
 
     def __len__(self):
         return self.B.shape[0]
@@ -34,23 +28,23 @@ class LADataset(Dataset):
 
 class LADataModule(pl.LightningDataModule):
     
-    def __init__(self, data_path, batch_size, a, n, numerical_method='fd'):
+    def __init__(self, data_path, batch_size, a, n,):
         super().__init__()
-        self.a ,self.n, self.numerical_method = a, n, numerical_method
-        self.trainF = f'{data_path}{numerical_method}_F.npy'
-        self.valF = f'{data_path}{numerical_method}_ValF.npy'
+        self.a ,self.n = a, n
+        self.trainF = f'{data_path}_F.npy'
+        self.valF = f'{data_path}_ValF.npy'
 
-        self.trainB = f'{data_path}{numerical_method}_B.npy'
-        self.valB = f'{data_path}{numerical_method}_ValB.npy'
+        self.trainB = f'{data_path}_B.npy'
+        self.valB = f'{data_path}_ValB.npy'
 
-        self.trainR = f'{data_path}{numerical_method}_R.npy'
-        self.valR = f'{data_path}{numerical_method}_ValR.npy'
+        self.trainR = f'{data_path}_R.npy'
+        self.valR = f'{data_path}_ValR.npy'
         self.batch_size = batch_size
 
     def setup(self, stage):    
         if stage == 'fit' or stage is None:
-            self.train_dataset = LADataset(self.trainB, self.trainF, self.a, self.n, self.numerical_method)
-            self.val_dataset = LADataset(self.valB, self.valF, self.a, self.n, self.numerical_method)
+            self.train_dataset = LADataset(self.trainB, self.trainF, self.a, self.n)
+            self.val_dataset = LADataset(self.valB, self.valF, self.a, self.n)
         if stage == 'test':
             pass
 
@@ -61,4 +55,4 @@ class LADataModule(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=6)
     
     def test_dataloader(self):
-        pass  
+        raise NotImplementedError

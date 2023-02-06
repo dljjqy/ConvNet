@@ -28,7 +28,7 @@ def fd_A_dir(n):
     A = A.tocoo()
     return A
 
-def fd_b_dir(f, h, order=2):
+def fd_b_dir(f, h):
     n, _ = f.shape
     h2 = h**2
     b = np.zeros(n**2)
@@ -37,7 +37,6 @@ def fd_b_dir(f, h, order=2):
         for j in range(1, n-1):
             idx = i * n + j
             b[idx] = f[i, j]*h2
-
     return b
 
 def fd_A_neu(n, neus=['left', 'right'], diris=['top', 'bottom']):

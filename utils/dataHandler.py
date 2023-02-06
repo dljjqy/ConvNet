@@ -52,37 +52,20 @@ def _getMatrix(dir, n):
     sparse.save_npz(p, An)
     _getJacMatrix(p, An)
     del An
-
-    Ad = fv_A_dirichlet(n)
-    p = dir + 'fv_AD'
-    sparse.save_npz(p, Ad)
-    _getJacMatrix(p, Ad)
-    del Ad
-
-    An = fv_A_neu(n)
-    p = dir + 'fv_AN'
-    sparse.save_npz(p, An)
-    _getJacMatrix(p, An)
-    del An
     return True
 
-def _getFdata(dir, fs, valfs,numerical_method='fd'):
-    np.save(f'{dir}{numerical_method}_F.npy', fs)
-    np.save(f'{dir}{numerical_method}_ValF.npy', valfs)
+def _getFdata(dir, fs, valfs):
+    np.save(f'{dir}_F.npy', fs)
+    np.save(f'{dir}_ValF.npy', valfs)
     return True
 
-def _getBdata(dir, a, n, fs, valfs, numerical_method='fd'):  
-    if numerical_method == 'fd':
-        h = 2*a/(n-1)
-        B = fs.reshape(-1, n**2) * h**2
-        valB = valfs.reshape(-1, n**2) * h**2 
-    
-    elif numerical_method == 'fv':  
-        B = fs.reshape(-1, n**2)
-        valB = valfs.reshape(-1, n**2)
+def _getBdata(dir, a, n, fs, valfs):  
+    h = 2*a/(n-1)
+    B = fs.reshape(-1, n**2) * h**2
+    valB = valfs.reshape(-1, n**2) * h**2 
 
-    np.save(f'{dir}{numerical_method}_B.npy', B)
-    np.save(f'{dir}{numerical_method}_ValB.npy', valB)
+    np.save(f'{dir}_B.npy', B)
+    np.save(f'{dir}_ValB.npy', valB)
     del B, valB
     return True
 
@@ -198,8 +181,8 @@ def _genData(path, n):
     return True
 
 
-def _genMixData(max_point_source_num=5, min_allow_h=6, sample_points=1000,
-        minQ=1, maxQ=2, a=1, n=65, trainN=5000, valN=100, path='../data'):
+def _genMixData(max_point_source_num=10, gap=0.05, k=1,
+        minQ=0.5, maxQ=2.5, a=1, n=128, trainN=5000, valN=100, path='../data'):
     '''
     Generate mixed type data for finite difference:
         params:
@@ -221,33 +204,19 @@ def _genMixData(max_point_source_num=5, min_allow_h=6, sample_points=1000,
     x = np.linspace(-a, a, n)
     y = np.linspace(-a, a, n)
     xx, yy = np.meshgrid(x, y)
-    gap = min_allow_h * h
     N = trainN + valN
     fd_fs = np.zeros((N, n, n))
 
     rng = np.random.default_rng(0)
     source_nums = rng.integers(low=1, high=max_point_source_num+1, size=N)
-    xs = np.random.uniform(-a+min_allow_h*h, a-min_allow_h*h, sample_points)
-    ys = np.random.uniform(-a+min_allow_h*h, a-min_allow_h*h, sample_points)
-    Qs = np.random.uniform(minQ, maxQ, sample_points)
-
+    
     for i, source_num in enumerate(source_nums): 
-        coords = np.array([])
-        qs = np.random.choice(Qs, size=source_num)
-        while coords.shape[0] < source_num:
-            new_coord = np.array([np.random.choice(xs, size=1), np.random.choice(ys, size=1)])
-            if coords.size > 0:
-                distances = np.linalg.norm(coords - new_coord, axis=1)
-                if (distances >= gap).all():
-                    coords = np.stack([*coords, new_coord], 0)
-                    fd_fs[i] += qs[coords.shape[0]-1] * normal(xx, yy, h, new_coord.squeeze())
-                else:
-                    continue
-            else:
-                coords = np.array([new_coord])
-                fd_fs[i] += qs[coords.shape[0]-1] * normal(xx, yy, h, new_coord.squeeze())
-    fd_B = fd_fs.reshape(-1, n**2) * h**2
-
+        qs = np.random.uniform(minQ, maxQ, source_num)
+        points = _gen_points(source_num, gap, a)
+        for j, point in enumerate(points):
+            fd_fs[i] += qs[j] * normal(xx, yy, h, point)
+        
+    fd_B = fd_fs.reshape(-1, n**2) * h**2 / k
     fd_trainF = fd_fs[:trainN]
     fd_valF = fd_fs[trainN:]
 
@@ -258,43 +227,52 @@ def _genMixData(max_point_source_num=5, min_allow_h=6, sample_points=1000,
     np.save(f'{p}/fd_B', fd_trainB)
     np.save(f'{p}/fd_ValB.npy', fd_valB)
 
+def _gen_points(n, min_dist, a=1):
+    points = np.empty((0, 2))
+    while len(points) < n :
+        new_point = np.random.uniform(-1 + min_dist, 1 - min_dist, size=(2,))
+        if len(points) == 0:
+            points = np.append(points, [new_point], axis=0)
+            continue
+        dist = np.sqrt(np.sum((points - new_point) ** 2, axis=1))
+        if np.min(dist) >= min_dist:
+            points = np.append(points, [new_point], axis=0)
+    return points
+        
 
 def gen_test_data(data_path='../data/', save_path='../test_data/'):
     save_path = Path(save_path)
     data_path = Path(data_path)
     
-    methods = ['fd', 'fv']
     boundary_types = ['D', 'N']
 
     for size in data_path.iterdir():
         types = [f for f in size.iterdir() if not 'mat' in f'{f}']
         mat_path = f'{size}/mat/'
+    for boundary_type in boundary_types:
+            A = sparse.load_npz(f'{mat_path}_A{boundary_type}.npz').tocsc()
+            lu = sla.splu(A)
+            for t in types:
+                p = Path(f'{save_path}/{size.stem}/{t.stem}')
+                if not p.is_dir():  p.mkdir(parents=True)
+                
+                B = np.load(f'{t}/_B.npy')
+                valB = np.load(f'{t}/_ValB.npy')
+                
+                X = np.zeros_like(B)
+                valX = np.zeros_like(valB)
+                for i in range(B.shape[0]):
+                    X[i] = lu.solve(B[i])
+                np.save(f'{save_path}/{size.stem}/{t.stem}/_X{boundary_type}.npy', X)                
+                
+                for i in range(valB.shape[0]):
+                    valX[i] = lu.solve(valB[i])
+                np.save(f'{save_path}/{size.stem}/{t.stem}/_valX{boundary_type}.npy', X)                
 
-        for method in methods:
-            for boundary_type in boundary_types:
-                A = sparse.load_npz(f'{mat_path}{method}_A{boundary_type}.npz').tocsc()
-                lu = sla.splu(A)
-                for t in types:
-                    p = Path(f'{save_path}/{size.stem}/{t.stem}')
-                    if not p.is_dir():  p.mkdir(parents=True)
-                    
-                    B = np.load(f'{t}/{method}_B.npy')
-                    valB = np.load(f'{t}/{method}_ValB.npy')
-                    
-                    X = np.zeros_like(B)
-                    valX = np.zeros_like(valB)
-                    for i in range(B.shape[0]):
-                        X[i] = lu.solve(B[i])
-                    np.save(f'{save_path}/{size.stem}/{t.stem}/{method}_X{boundary_type}.npy', X)                
-                    
-                    for i in range(valB.shape[0]):
-                        valX[i] = lu.solve(valB[i])
-                    np.save(f'{save_path}/{size.stem}/{t.stem}/{method}_valX{boundary_type}.npy', X)                
-
-                    F = np.load(f'{t}/{method}_F.npy')
-                    valF = np.load(f'{t}/{method}_ValF.npy')
-                    np.save(f'{save_path}/{size.stem}/{t.stem}/{method}_F.npy', F)
-                    np.save(f'{save_path}/{size.stem}/{t.stem}/{method}_valF.npy', valF)
+                F = np.load(f'{t}/_F.npy')
+                valF = np.load(f'{t}/_ValF.npy')
+                np.save(f'{save_path}/{size.stem}/{t.stem}/_F.npy', F)
+                np.save(f'{save_path}/{size.stem}/{t.stem}/_valF.npy', valF)
 
         
     
@@ -302,4 +280,5 @@ def gen_test_data(data_path='../data/', save_path='../test_data/'):
     return True
 
 if __name__ == '__main__':
-    _genMixData()
+    _genMixData(max_point_source_num=10, gap=0.05, k=1, minQ=0.5, maxQ=2.5, a=1, 
+                n=64, trainN=1000, valN=100, path='../data/')
