@@ -8,32 +8,35 @@ class LADataset(Dataset):
         super().__init__()
         path = Path(path)
         if train:
-            self.B = np.load(f'{path}/fd_B.npy')
-            self.F = np.load(f'{path}/fd_F.npy')
-            self.U = np.load(f'{path}/fd_X{boundary_type}.npy')
+            B = np.load(f'{path}/fd_B.npy')
+            F = np.load(f'{path}/fd_F.npy')
+            U = np.load(f'{path}/fd_X{boundary_type}.npy')
         else:
-            self.B = np.load(f'{path}/fd_ValB.npy')
-            self.F = np.load(f'{path}/fd_ValF.npy')
-            self.U = np.load(f'{path}/fd_ValX{boundary_type}.npy')
+            B = np.load(f'{path}/fd_ValB.npy')
+            F = np.load(f'{path}/fd_ValF.npy')
+            U = np.load(f'{path}/fd_ValX{boundary_type}.npy')
 
         x = np.linspace(-a, a, n)
         y = np.linspace(-a, a, n)
-        self.xx, self.yy = np.meshgrid(x, y)
-        # self.xx, self.yy = torch.from_numpy(xx).float(), torch.from_numpy(yy).float()
+        xx, yy = np.meshgrid(x, y)
+        self.xx, self.yy = torch.from_numpy(xx).float(), torch.from_numpy(yy).float()
+        self.F = torch.from_numpy(F).float()
+        self.B = torch.from_numpy(B).float()
+        self.U = torch.from_numpy(U).float()
+
+        if boundary_type == 'D':
+            self.U = self.U[:, 1:-1, 1:-1]
+        elif boundary_type == 'N':
+            self.U = self.U[:, 1:-1, :]
 
     def __len__(self):
         return self.B.shape[0]
 
     def __getitem__(self, idx):
-        f = self.F[idx, :]
-        b = self.B[idx, :]
-        u = self.U[idx, 1:-1, 1:-1]
-        data = np.stack([self.xx, self.yy, f], axis=0)
-        
-        f = torch.from_numpy(f).float()
-        b = torch.from_numpy(b).float()
-        u = torch.from_numpy(u).float()
-        data = torch.from_numpy(data).float()
+        f = self.F[idx]
+        b = self.B[idx]
+        u = self.U[idx]
+        data = torch.stack([self.xx, self.yy, f], axis=0)
         return  data, b, f[None, ...], u[None, ...]
     
 
@@ -58,21 +61,16 @@ class LADataModule(pl.LightningDataModule):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=6)
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=6)
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=6)
     
     def test_dataloader(self):
         return DataLoader(self.dataset, batch_size=1, shuffle=False, num_workers=6)
         
 
 if __name__ == '__main__':
-    ds = LADataset('../data/64/mixed/', 1, 64)
+    ds = LADataset('../data/64/mixed/', 1, 64, True, 'N')
     data, b, f, u = ds[0]
-    print(data.to('cuda').type)
-    print(b.dtype)
-
-    
     print(data.shape)
-
     print(b.shape)
     print(f.shape)
     print(u.shape)

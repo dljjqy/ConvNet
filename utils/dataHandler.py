@@ -298,7 +298,6 @@ def _solver(data_path, mat_path, n):
     
 
 def genMixData(n):
-    n = 64
     _genMixData(max_point_source_num=10, gap=0.05, k=1, minQ=0.5, maxQ=2.5, a=1, 
                 n=n, trainN=5000, valN=100, path='../data/')
     mat_path = Path(f'../data/{n}/mat/')
@@ -308,4 +307,4 @@ def genMixData(n):
     _solver(f'../data/{n}/mixed', f'../data/{n}/mat', n)
 
 if __name__ == '__main__':
-    genMixData(64)
+    genMixData(128)

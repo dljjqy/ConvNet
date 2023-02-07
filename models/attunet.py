@@ -46,7 +46,7 @@ class Attention_block(nn.Module):
         return out
 
 class AttUNet(nn.Module):
-    def __init__(self, layers=None, in_c=3, out_c=1, features=16, boundary_type = 'D', numerical_method='fd'):
+    def __init__(self, layers=None, in_c=3, out_c=1, features=16, boundary_type = 'D'):
         super().__init__()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.dconv0 = DoubleConv(in_c, features)
@@ -64,14 +64,11 @@ class AttUNet(nn.Module):
             self.final = nn.Conv2d(features, out_c, 3, 1, padding='valid')
         elif boundary_type == 'N':
             self.final = nn.Conv2d(features, out_c, 3, 1, padding=(0, 1), padding_mode='reflect')
-        if numerical_method == 'fv':
-            self.final = nn.Conv2d(features, out_c, 3, 1, padding='same', padding_mode='reflect')
-
 
         self.up4 = nn.ConvTranspose2d(features * 16, features * 8, (2, 2), (2, 2))
         self.up3 = nn.ConvTranspose2d(features * 8,  features * 4, (2, 2), (2, 2))
         self.up2 = nn.ConvTranspose2d(features * 4,  features * 2, (2, 2), (2, 2))
-        self.up1 = nn.ConvTranspose2d(features * 2,  features * 1, (3, 3), (2, 2))
+        self.up1 = nn.ConvTranspose2d(features * 2,  features * 1, (2, 2), (2, 2))
 
         self.ag1 = Attention_block(features *16, features * 8, features * 8)
         self.ag2 = Attention_block(features * 8, features * 4, features * 4)

@@ -84,55 +84,43 @@ def internal_conv(x):
     rhs = F.conv2d(x, kernel)
     return rhs
 
-def convRhs(a, n, dir_bcs=(1,1,1,1), neu_bcs=None, gn=0, gd=0, k=1):
+def convRhs(a, n, boundary_type='D', gn=0, gd=0, k=1):
     '''
     Generate rhs function.
     Params:
         numerical_method: fd, fv, (fem)
         a: Length of edges in the squared domain.
         n: Resolution of the mesh.
-        dir_bcs: Which edge is dirichlet type boundary.(left, right, top, bottom).
-            (1, 1, 1, 1) means all edges are dirichlet type.
-        neu_bcs: Which edge is neumann type boundary.Same as dir_bcs.
+        boundary_type: 'D' for all dirichlet, 'N' for mixed type boundary condition.
         gd: The constant value of dirichlet type boundaries.
         gn: The constant value of neumann type boundaries.
         k: The constant parameters in lapalce equation.
+    return:
+        dir_pad:
+            padder for dirichler boundary points,as all points on dirichlet boundary will not be redicted by networks.
+        conver:
+            convolution-er for compute the rhs for difference equation.
+            D:
+                input -net-> N-2 x N-2 -pad-> N x N -conv-> N-2 x N-2
+            N:
+                input -net-> N-2 x N -pad-> N x N+2 -conv-> N-2 x N
+
     '''
-    dir_pad = lambda x: x
-    neu_pad = lambda x: x
-    force = lambda x:x
     h = 2 * a / (n - 1)
-    h2 = h**2
-    
+    h2 = h**2    
     force = lambda f: h2 * f/ (4 * k)
-    if not dir_bcs is None:
-        dir_pad = lambda x: fd_pad_diri_bc(x, dir_bcs, gd)
-        force = lambda f: h2 * _genforce(f, dir_bcs, n)  / (4 * k)
+    
+    if boundary_type == 'D':
+        dir_pad = lambda x: fd_pad_diri_bc(x, (1, 1, 1, 1), gd)
+        conver = lambda x, f: internal_conv(dir_pad(x)) + force(f)[..., 1:-1, 1:-1]
+    
+    elif boundary_type == 'N':
+        dir_pad = lambda x: fd_pad_diri_bc(x, (0, 0, 1, 1), gd)
+        neu_pad = lambda x: fd_pad_neu_bc(x, h, (1, 1, 0, 0), gn)
+        padder = lambda x: dir_pad(neu_pad(x))
+        conver = lambda x, f: internal_conv(padder(x)) + force(f)[..., 1:-1, :]
+    return dir_pad, conver
 
-    if not neu_bcs is None:
-        neu_pad = lambda x: fd_pad_neu_bc(x, h, neu_bcs, gn)
-
-    padder = lambda x: dir_pad(x)
-    conver = lambda x, f: internal_conv(dir_pad(neu_pad(x))) + force(f)
-
-    return padder, conver
-
-def _genforce(f, dir_bcs, n):
-    bs, c, _, _ = f.shape
-    idx = torch.ones((bs, c, n-2, n-2))
-
-    # pad idx with one for neumann boundary
-    pad = tuple(int(i == 0) for i in dir_bcs)
-    idx = F.pad(idx, pad, 'constant', 1)
-
-    # pad idx with zero for dirichlet boundary
-    pad = dir_bcs
-    idx = F.pad(idx, pad, 'constant', 0)
-
-    idx = torch.gt(idx, 0)
-    nx = n - sum(dir_bcs[:2])
-    ny = n - sum(dir_bcs[2:])
-    return f[idx].reshape(bs, c, nx, ny)
     
 if __name__ == '__main__':
     u = torch.rand(1, 1, 3, 5)

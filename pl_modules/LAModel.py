@@ -17,12 +17,7 @@ class LAModel(pl.LightningModule):
         self.n = n
         self.backward_type = backward_type
         self.cg_max_iters = cg_max_iter
-        self.boundary_type = boundary_type
-        
-        if boundary_type == 'D':
-            self.padder, self.conver = convRhs(a, n, (1, 1, 1, 1))
-        elif boundary_type == 'N':
-            self.padder, self.conver = convRhs(a, n, (1, 1, 0, 0), (0, 0, 1, 1))
+        self.padder, self.conver = convRhs(a, n, boundary_type, 0, 0, 1)
 
         A, invM, M = np2torch(data_path, 'jac', boundary_type)
         self.register_buffer('A', A)
