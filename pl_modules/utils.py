@@ -16,7 +16,7 @@ def np2torch(data_path, backward_type='jac', boundary_type='D'):
     backward_type: To identify which iterative method to use.
         Jacobian, Gauess Seidel, CG.
     '''
-    A_path = f'{data_path}_A{boundary_type}'
+    A_path = f'{data_path}fd_A{boundary_type}'
     invM_path = f'{A_path}_{backward_type}_invM.npz'
     M_path = f'{A_path}_{backward_type}_M.npz'  
 

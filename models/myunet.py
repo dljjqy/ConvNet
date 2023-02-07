@@ -52,7 +52,7 @@ class varyUNet(nn.Module):
             For finite difference method with point type mesh, end_padding should be 'valid' for Dirichlet type.
             And (0, 1) for Mixed type boundary.
     '''
-    def __init__(self, in_c, out_c=1, features=8, layers=5, end_padding='same'):
+    def __init__(self, in_c=3, out_c=1, features=8, layers=5, boundary_type='D'):
         super().__init__()
         self.layers = layers
         self.first = DoubleConv(in_c, features)
@@ -67,9 +67,15 @@ class varyUNet(nn.Module):
                         2**(layers-i-1) * features))
         
         self.decoders.pop()
-        self.decoders.append(Decoder(2 * features, features, (3, 3)))
+        self.decoders.append(Decoder(2 * features, features, (2, 2)))
 
-        self.end = nn.Conv2d(features, out_c, 3, 1, padding=end_padding)
+        if boundary_type == 'D':            
+            self.end = nn.Conv2d(features, out_c, 3, 1, padding='valid')
+        elif boundary_type == 'N':
+            self.end = nn.Conv2d(features, out_c, 3, 1, padding=(0, 1), padding_mode='reflect')
+        
+        self.encoders = nn.ModuleList(self.encoders)
+        self.decoders = nn.ModuleList(self.decoders)
 
     def forward(self, x):
         Ys = [self.first(x)]
@@ -87,7 +93,7 @@ class varyUNet(nn.Module):
         return self.end(X)
 
 if __name__ == '__main__':
-    x = torch.rand(3, 3, 65, 65)
+    x = torch.rand(3, 3, 64, 64).to('cuda')
     net = varyUNet(3, 1, 8, 3)
     y = net(x)
     print(y.shape)

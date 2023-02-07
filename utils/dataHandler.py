@@ -267,18 +267,45 @@ def gen_test_data(data_path='../data/', save_path='../test_data/'):
                 
                 for i in range(valB.shape[0]):
                     valX[i] = lu.solve(valB[i])
-                np.save(f'{save_path}/{size.stem}/{t.stem}/_valX{boundary_type}.npy', X)                
+                np.save(f'{save_path}/{size.stem}/{t.stem}/_valX{boundary_type}.npy', valX)                
 
                 F = np.load(f'{t}/_F.npy')
                 valF = np.load(f'{t}/_ValF.npy')
                 np.save(f'{save_path}/{size.stem}/{t.stem}/_F.npy', F)
                 np.save(f'{save_path}/{size.stem}/{t.stem}/_valF.npy', valF)
-
-        
-    
-
     return True
 
-if __name__ == '__main__':
+def _solver(data_path, mat_path, n):
+    B = np.load(f'{data_path}/fd_B.npy')
+    valB = np.load(f'{data_path}/fd_ValB.npy')
+
+    boundary_types = ['D', 'N']
+    for boundary_type in boundary_types:
+        A = sparse.load_npz(f'{mat_path}/fd_A{boundary_type}.npz').tocsc()
+        lu = sla.splu(A)
+        
+        X = np.zeros((B.shape[0], n, n))
+        valX = np.zeros((valB.shape[0], n, n))
+        for i in range(B.shape[0]):
+            X[i] = lu.solve(B[i]).reshape(n, n)
+
+        np.save(f'{data_path}/fd_X{boundary_type}.npy', X)                
+        
+        for i in range(valB.shape[0]):
+            valX[i] = lu.solve(valB[i]).reshape(n, n)
+        np.save(f'{data_path}/fd_valX{boundary_type}.npy', valX)
+
+    
+
+def genMixData(n):
+    n = 64
     _genMixData(max_point_source_num=10, gap=0.05, k=1, minQ=0.5, maxQ=2.5, a=1, 
-                n=64, trainN=1000, valN=100, path='../data/')
+                n=n, trainN=5000, valN=100, path='../data/')
+    mat_path = Path(f'../data/{n}/mat/')
+    if not mat_path.is_dir(): 
+        mat_path.mkdir(exist_ok=False)
+    _getMatrix(f'{mat_path}/', n)  
+    _solver(f'../data/{n}/mixed', f'../data/{n}/mat', n)
+
+if __name__ == '__main__':
+    genMixData(64)

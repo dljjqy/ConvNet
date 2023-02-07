@@ -8,8 +8,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type, layers,
-            backward_type='jac', lr=1e-3, max_epochs=100, ckpt=False, gpus=1,
+def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type,
+            backward_type='jac', lr=1e-3, max_epochs=100, ckpt=None, gpus=1,
             dm=LADataModule, pl_model=LAModel):
     '''
     gridSize: How big mesh. 33, 65, 129
@@ -24,12 +24,12 @@ def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type
     max_epochs: epochs
     ckpt: True for load parameters from ckpt
     '''
+    layers = int(np.log2(gridSize) - 2)
     exp_name = f'{backward_type}_{gridSize}_{net}{layers}_{features}_bs{batch_size}_{data_type}{boundary_type}'
     data_path = f'./data/{gridSize}/{data_type}/'
     mat_path = f'./data/{gridSize}/mat/'
-    if ckpt:
+    if ckpt is not None:
         exp_name = 'resume_' + exp_name
-    layers = list(2**i for i in range(int(np.log2(gridSize)) - 2))
     model = model_names[net](layers=layers, features=features, boundary_type=boundary_type)
     n = gridSize
     a = 500 if 'big' in data_type else 1
@@ -54,7 +54,7 @@ def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type
         },
         'pl_dataModule': {
             'name': dm,
-            'args': [data_path, batch_size, a, n]
+            'args': [data_path, batch_size, a, n, boundary_type]
         }
     }
     return dc

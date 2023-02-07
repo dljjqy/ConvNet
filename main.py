@@ -3,16 +3,16 @@ from itertools import product
 from pathlib import Path
 
 hyper_parameters_dict = {
-"grid_sizes" : [65],
+"grid_sizes" : [64],
 "batch_sizes" : [16],
-"net" : ['UNet'],
+"net" : ['varyUNet'],
 "features" : [16],
 "data_type": ['mixed'],
-"boundary_type":['D'],
-"backward_type": ['conv'], 
+"boundary_type":['D', 'N'],
+"backward_type": ['mse', 'jac', 'cg', 'energy', 'conv', 'real'], 
 "lr":[1e-3], 
 "max_epochs":[150],
-"ckpt":[None]
+"ckpt": [None],
 # "ckpt": ['./lightning_logs/fv_cg_65_UNet_32_bs32_OneD/version_1/checkpoints/last.ckpt']
 }
 

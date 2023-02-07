@@ -2,7 +2,7 @@ from .utils import *
 import pytorch_lightning as pl
 
 class LAModel(pl.LightningModule):
-    def __init__(self, net, a, n, data_path='./data/', lr=1e-3, numerical_method='fd',
+    def __init__(self, net, a, n, data_path='./data/', lr=1e-3,
                 backward_type='jac', boundary_type='D', cg_max_iter=20):
         '''
             All right side computation:
@@ -20,11 +20,11 @@ class LAModel(pl.LightningModule):
         self.boundary_type = boundary_type
         
         if boundary_type == 'D':
-            self.padder, self.conver = convRhs(numerical_method, a, n, (1, 1, 1, 1))
+            self.padder, self.conver = convRhs(a, n, (1, 1, 1, 1))
         elif boundary_type == 'N':
-            self.padder, self.conver = convRhs(numerical_method, a, n, (1, 1, 0, 0), (0, 0, 1, 1))
+            self.padder, self.conver = convRhs(a, n, (1, 1, 0, 0), (0, 0, 1, 1))
 
-        A, invM, M = np2torch(data_path, 'jac', boundary_type, numerical_method)
+        A, invM, M = np2torch(data_path, 'jac', boundary_type)
         self.register_buffer('A', A)
         self.register_buffer('invM', invM)
         self.register_buffer('M', M)
@@ -35,7 +35,7 @@ class LAModel(pl.LightningModule):
         return y
 
     def training_step(self, batch, batch_idx):
-        x, b, f = batch
+        x, b, f, ans = batch
         u = self(x)
         y = torch.flatten(self.padder(u), 1, -1)
 
@@ -49,25 +49,27 @@ class LAModel(pl.LightningModule):
             'jac' : F.l1_loss(y, jac),
             'cg': F.l1_loss(y, cg),
             'energy' : energy(y, self.A, b),
-            'conv': F.l1_loss(u, conv),}
+            'conv': F.l1_loss(u, conv),
+            'real':F.mse_loss(u, ans)}
         self.log_dict(loss_values)
         return {'loss' : loss_values[self.backward_type]}
 
     def validation_step(self, batch, batch_idx):
-        x, b, f = batch
+        x, b, f, ans = batch
+
         u = self(x)
         y = torch.flatten(self.padder(u), 1, -1)
 
         jac = self.rhs_jac(y, b)
         cg = self.rhs_cg(y, b, self.cg_max_iters)            
         conv = self.conver(u, f)
-
         loss_values = {
             'val_mse' : mse_loss(y, self.A, b),
             'val_jac' : F.l1_loss(y, jac),
             'val_cg': F.l1_loss(y, cg),
             'val_energy' : energy(y, self.A, b),
-            'val_conv': F.l1_loss(u, conv)}
+            'val_conv': F.l1_loss(u, conv),
+            'val_real': F.mse_loss(u, ans)}
             
         self.log_dict(loss_values)
         return loss_values
