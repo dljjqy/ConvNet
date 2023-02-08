@@ -293,7 +293,7 @@ def _solver(data_path, mat_path, n):
         
         for i in range(valB.shape[0]):
             valX[i] = lu.solve(valB[i]).reshape(n, n)
-        np.save(f'{data_path}/fd_valX{boundary_type}.npy', valX)
+        np.save(f'{data_path}/fd_ValX{boundary_type}.npy', valX)
 
     
 
@@ -302,10 +302,81 @@ def genMixData(n):
                 n=n, trainN=5000, valN=100, path='../data/')
     mat_path = Path(f'../data/{n}/mat/')
     if not mat_path.is_dir(): 
-        mat_path.mkdir(exist_ok=False)
-    _getMatrix(f'{mat_path}/', n)  
+        mat_path.mkdir(exist_ok=True)
+        _getMatrix(f'{mat_path}/', n)  
     _solver(f'../data/{n}/mixed', f'../data/{n}/mat', n)
 
+
+def gen_rectangles(a, n, block_nums, min_width, max_width, min_height, max_height, dist):
+    rectangles = []
+    while len(rectangles) < block_nums:
+        width = np.random.uniform(min_width, max_width)
+        height = np.random.uniform(min_height, max_height)
+        x = np.random.uniform(-a + dist, a - width - dist)
+        y = np.random.uniform(-a + dist, a - height - dist)
+        overlaps = False
+        for rect in rectangles:
+            if (x < rect[0] + rect[2]) and (rect[0] < x + width) and (y < rect[1] + rect[3]) and (rect[1] < y + height):
+                overlaps = True
+                break
+        if not overlaps:
+            rectangles.append((x, y, width, height))
+
+    grid = np.zeros((n, n))
+    h = 2 * a / (n - 1)
+    for rect in rectangles:
+        x_start = int((rect[0] + a) / h)
+        x_end = int((rect[0] + rect[2] + a) / h)
+        y_start = int((rect[1] + a) / h)
+        y_end = int((rect[1] + rect[3] + a) / h)
+        grid[y_start:y_end, x_start:x_end] = 1
+    return grid
+
+def _gen_block_data(a, n, max_block_num, trainN, valN, k=1, 
+                    path='../data/', min_width=0.05, max_width=0.5, min_height=0.05, max_height=0.5, dist=0.1):
+    # Check folder exists?
+    path = Path(path)/f'{n}'/'block'
+    if not path.is_dir():
+        path.mkdir(parents=True, exist_ok=True)
+
+    N = trainN + valN
+    h = 2 * a / (n - 1)
+    h2 = h**2
+    # Generate bolck numbers
+    rng = np.random.default_rng(0)
+    block_nums = rng.integers(low=1, high=max_block_num+1, size=N)
+    
+    # Generate force matrix and B
+    fs = np.zeros((N, n , n))
+    for i in range(len(block_nums)):
+        fs[i] = gen_rectangles(a, n, block_nums[i], min_width, max_width, min_height, max_height, dist)
+    B = fs.reshape(-1, n**2) * h2 / k
+
+    fd_F = fs[:trainN]
+    np.save(f'{path/"fd_F.npy"}', fd_F)
+
+    fd_B = B[:trainN]
+    np.save(f'{path/"fd_B.npy"}', fd_B)
+
+    fd_ValF = fs[trainN:]
+    np.save(f'{path/"fd_ValF.npy"}', fd_ValF)
+
+    fd_ValB = B[trainN:]
+    np.save(f'{path/"fd_ValB.npy"}', fd_ValB)
+    return 
+
+
+def gen_block_data(n):
+    _gen_block_data(1, n, 12, 5000, 100, path='../data/')
+    mat_path = Path(f'../data/{n}/mat/')
+    if not mat_path.is_dir(): 
+        mat_path.mkdir(exist_ok=True)
+        _getMatrix(f'{mat_path}/', n)  
+    _solver(f'../data/{n}/block', f'../data/{n}/mat', n) 
+        
+
+        
 if __name__ == '__main__':
-    for n in [64, 128, 256]:
-        genMixData(n)
+    for n in [64]:
+        # genMixData(n)
+        gen_block_data(n)
