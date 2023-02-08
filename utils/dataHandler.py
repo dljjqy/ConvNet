@@ -307,4 +307,5 @@ def genMixData(n):
     _solver(f'../data/{n}/mixed', f'../data/{n}/mat', n)
 
 if __name__ == '__main__':
-    genMixData(128)
+    for n in [64, 128, 256]:
+        genMixData(n)

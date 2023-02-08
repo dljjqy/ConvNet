@@ -26,7 +26,7 @@ def gen_hyper_dict(gridSize, batch_size, net, features, data_type, boundary_type
     '''
     layers = int(np.log2(gridSize) - 2)
     exp_name = f'{backward_type}_{gridSize}_{net}{layers}_{features}_bs{batch_size}_{data_type}{boundary_type}'
-    data_path = f'./data/{gridSize}/{data_type}/'
+    data_path = f'./data/{gridSize}/{data_type}'
     mat_path = f'./data/{gridSize}/mat/'
     if ckpt is not None:
         exp_name = 'resume_' + exp_name

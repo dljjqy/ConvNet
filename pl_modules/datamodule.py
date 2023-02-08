@@ -6,7 +6,7 @@ from pathlib import Path
 class LADataset(Dataset):
     def __init__(self, path, a, n, train=True, boundary_type='D'):
         super().__init__()
-        path = Path(path)
+        # path = Path(path)
         if train:
             B = np.load(f'{path}/fd_B.npy')
             F = np.load(f'{path}/fd_F.npy')
