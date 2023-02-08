@@ -285,7 +285,7 @@ def apply_diri_bc(b, bcs={'top': 0, 'bottom': 0}):
                 b[idx] = g
     return b
 
-def apply_dirichlet_bc_for_all(b, bc, g, order=2):
+def apply_dirichlet_bc_for_all(b, g, bc=True, order=2):
     '''
     bc --> True for soft, Flase for Hard
     g --> the value of boundary
