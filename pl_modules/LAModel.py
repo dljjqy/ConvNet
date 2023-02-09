@@ -43,7 +43,7 @@ class LAModel(pl.LightningModule):
             'mse' : mse_loss(y, self.A, b),
             'jac' : F.l1_loss(y, jac),
             'cg': F.l1_loss(y, cg),
-            'energy' : energy(y, self.A, b),
+            # 'energy' : energy(y, self.A, b),
             'conv': F.l1_loss(u, conv),
             'real':F.mse_loss(u, ans)}
         self.log_dict(loss_values)
