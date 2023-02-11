@@ -4,12 +4,12 @@ from pathlib import Path
 
 hyper_parameters_dict = {
 "grid_sizes" : [64],
-"batch_sizes" : [8],
+"batch_sizes" : [16],
 "net" : ['varyUNet'],
 "features" : [16],
-"data_type": ['block'],
+"data_type": ['mixed'],
 "boundary_type":['N', 'D'],
-"backward_type": ['cg','real'],
+"backward_type": ['conv', 'jac'],
 "lr":[1e-3], 
 "max_epochs":[100],
 "ckpt": [None],
@@ -26,5 +26,3 @@ for parameter in product(*hyper_parameters_dict.values()):
         main(case)
     else:
         print(f"\nExperiment Name: {case['name']} has already done!\n")
-
-    

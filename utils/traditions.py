@@ -12,6 +12,7 @@ def fd_A_dir(n):
             A[idx, idx+1] = -1
             A[idx, idx-n] = -1
             A[idx, idx+n] = -1
+            
     # Homogeneous Dirichlet Boundary
     for i in range(0, n):
         idx = 0 * n + i

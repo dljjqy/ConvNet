@@ -41,13 +41,13 @@ def _getJacMatrix(dir, A):
 
 
 def _getMatrix(dir, n):
-    Ad = -fd_A_dir(n)
+    Ad = fd_A_dir(n)
     p = dir + 'fd_AD'
     sparse.save_npz(p, Ad)
     _getJacMatrix(p, Ad)
     del Ad
 
-    An = -fd_A_neu(n)
+    An = fd_A_neu(n)
     p = dir + 'fd_AN'
     sparse.save_npz(p, An)
     _getJacMatrix(p, An)
@@ -214,7 +214,7 @@ def _genMixData(max_point_source_num=10, gap=0.05, k=1,
         qs = np.random.uniform(minQ, maxQ, source_num)
         points = _gen_points(source_num, gap, a)
         for j, point in enumerate(points):
-            fd_fs[i] += qs[j] * normal(xx, yy, h, point)
+            fd_fs[i] -= qs[j] * normal(xx, yy, h, point)
         
     fd_B = fd_fs.reshape(-1, n**2) * h**2 / k
     fd_trainF = fd_fs[:trainN]
@@ -298,7 +298,7 @@ def _solver(data_path, mat_path, n):
     
 
 def genMixData(n):
-    _genMixData(max_point_source_num=10, gap=0.05, k=1, minQ=0.5, maxQ=2.5, a=1, 
+    _genMixData(max_point_source_num=10, gap=0.1, k=1, minQ=0.5, maxQ=2.5, a=1, 
                 n=n, trainN=5000, valN=100, path='../data/')
     mat_path = Path(f'../data/{n}/mat/')
     if not mat_path.is_dir(): 
@@ -367,7 +367,7 @@ def _gen_block_data(a, n, max_block_num, trainN, valN, k=1,
 
 
 def gen_block_data(n):
-    _gen_block_data(1, n, 12, 5000, 100, path='../data/')
+    _gen_block_data(1, n, 10, 5000, 100, path='../data/')
     mat_path = Path(f'../data/{n}/mat/')
     if not mat_path.is_dir(): 
         mat_path.mkdir(exist_ok=True)
@@ -378,5 +378,5 @@ def gen_block_data(n):
         
 if __name__ == '__main__':
     for n in [64]:
-        # genMixData(n)
+        genMixData(n)
         gen_block_data(n)
