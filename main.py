@@ -3,13 +3,13 @@ from itertools import product
 from pathlib import Path
 
 hyper_parameters_dict = {
-"grid_sizes" : [64],
+"grid_sizes" : [128],
 "batch_sizes" : [16],
 "net" : ['varyUNet'],
 "features" : [16],
-"data_type": ['block'],
-"boundary_type":['D'],
-"backward_type": ['conv'],
+"data_type": ['block', 'mixed'],
+"boundary_type":['D', 'N'],
+"backward_type": ['conv', 'jac', 'cg', 'mse', 'real'],
 "lr":[1e-3], 
 "max_epochs":[100],
 "ckpt": [None],
