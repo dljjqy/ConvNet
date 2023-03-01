@@ -4,14 +4,14 @@ from pathlib import Path
 
 hyper_parameters_dict = {
 "grid_sizes" : [128],
-"batch_sizes" : [8],
+"batch_sizes" : [16],
 "net" : ['varyUNet'],
 "features" : [16],
-"data_type": ['block', 'mixed'],
+"data_type": ['block'],
 "boundary_type":['D', 'N'],
 "backward_type": ['conv', 'jac', 'cg', 'mse', 'real'],
-"lr":[1e-3], 
-"max_epochs":[100],
+"lr":[5e-4], 
+"max_epochs":[150],
 "ckpt": [None],
 # "ckpt": ['./lightning_logs/fv_cg_65_UNet_32_bs32_OneD/version_1/checkpoints/last.ckpt']
 }
