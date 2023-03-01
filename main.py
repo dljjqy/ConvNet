@@ -4,12 +4,12 @@ from pathlib import Path
 
 hyper_parameters_dict = {
 "grid_sizes" : [128],
-"batch_sizes" : [16],
+"batch_sizes" : [8],
 "net" : ['varyUNet'],
 "features" : [16],
 "data_type": ['block'],
 "boundary_type":['D', 'N'],
-"backward_type": ['conv', 'jac', 'cg', 'mse', 'real'],
+"backward_type": ['cg'],
 "lr":[5e-4], 
 "max_epochs":[150],
 "ckpt": [None],

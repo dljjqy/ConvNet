@@ -378,5 +378,5 @@ def gen_block_data(n):
         
 if __name__ == '__main__':
     for n in [128]:
-        genMixData(n)
+        # genMixData(n)
         gen_block_data(n)
